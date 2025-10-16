@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using Domain.Persistence.Enums;
 using Domain.Persistence.Models;
@@ -17,17 +17,17 @@ public partial class FitverseBookingDbContext : DbContext
     {
     }
 
-    public virtual DbSet<AvailabilityRule> AvailabilityRules { get; set; }
+    public virtual DbSet<AvailabilityRule> AvailabilityRules { get; set; } = null!;
 
-    public virtual DbSet<Booking> Bookings { get; set; }
+    public virtual DbSet<Booking> Bookings { get; set; } = null!;
 
-    public virtual DbSet<CoachTimeoff> CoachTimeoffs { get; set; }
+    public virtual DbSet<CoachTimeoff> CoachTimeoffs { get; set; } = null!;
 
-    public virtual DbSet<Subscription> Subscriptions { get; set; }
+    public virtual DbSet<Subscription> Subscriptions { get; set; } = null!;
 
-    public virtual DbSet<SubscriptionEvent> SubscriptionEvents { get; set; }
+    public virtual DbSet<SubscriptionEvent> SubscriptionEvents { get; set; } = null!;
 
-    public virtual DbSet<Timeslot> Timeslots { get; set; }
+    public virtual DbSet<Timeslot> Timeslots { get; set; } = null!;
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
