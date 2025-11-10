@@ -93,6 +93,50 @@ resource "aws_lb_listener" "http" {
   port              = 80
   protocol          = "HTTP"
 
+  dynamic "default_action" {
+    for_each = var.enable_https_listener && var.http_redirect_to_https ? [1] : []
+    content {
+      type = "redirect"
+      redirect {
+        protocol    = "HTTPS"
+        port        = "443"
+        status_code = var.http_redirect_status_code
+      }
+    }
+  }
+
+  dynamic "default_action" {
+    for_each = !(var.enable_https_listener && var.http_redirect_to_https) ? [var.default_listener_action] : []
+    content {
+      type = default_action.value.type
+      target_group_arn = default_action.value.type == "forward" && default_action.value.target_group_suffix != null ? (
+        aws_lb_target_group.this[default_action.value.target_group_suffix].arn
+      ) : null
+
+      dynamic "fixed_response" {
+        for_each = default_action.value.type == "fixed-response" ? compact([try(default_action.value.fixed_response, null)]) : []
+        content {
+          content_type = fixed_response.value.content_type
+          status_code  = fixed_response.value.status_code
+          message_body = lookup(fixed_response.value, "message_body", null)
+        }
+      }
+    }
+  }
+
+  tags = {
+    Name = "${var.project_name}-alb-http-listener"
+  }
+}
+
+resource "aws_lb_listener" "https" {
+  count             = var.enable_https_listener ? 1 : 0
+  load_balancer_arn = aws_lb.this.arn
+  port              = 443
+  protocol          = "HTTPS"
+  ssl_policy        = var.https_listener_ssl_policy
+  certificate_arn   = var.https_listener_certificate_arn
+
   default_action {
     type = var.default_listener_action.type
     target_group_arn = var.default_listener_action.type == "forward" && var.default_listener_action.target_group_suffix != null ? (
@@ -110,12 +154,54 @@ resource "aws_lb_listener" "http" {
   }
 
   tags = {
-    Name = "${var.project_name}-alb-http-listener"
+    Name = "${var.project_name}-alb-https-listener"
   }
 }
 
-resource "aws_lb_listener_rule" "rules" {
-  for_each = try(nonsensitive(local.listener_rules), local.listener_rules) # Use index for unique keying and skip empty condition sets
+resource "aws_lb_listener_rule" "https_rules" {
+  for_each = var.enable_https_listener ? try(nonsensitive(local.listener_rules), local.listener_rules) : {}
+
+  listener_arn = aws_lb_listener.https[0].arn
+  priority     = each.value.priority
+
+  action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.this[each.value.target_group_suffix].arn
+  }
+
+  dynamic "condition" {
+    for_each = coalesce(try(each.value.conditions, []), [])
+    content {
+      dynamic "path_pattern" {
+        for_each = try(condition.value.path_pattern, null) != null ? [condition.value.path_pattern] : []
+        content {
+          values = path_pattern.value.values
+        }
+      }
+      dynamic "host_header" {
+        for_each = try(condition.value.host_header, null) != null ? [condition.value.host_header] : []
+        content {
+          values = host_header.value.values
+        }
+      }
+      dynamic "http_request_method" {
+        for_each = try(condition.value.http_request_method, null) != null ? [condition.value.http_request_method] : []
+        content {
+          values = http_request_method.value.values
+        }
+      }
+      # Add more dynamic condition blocks here if you expand the variable definition
+    }
+  }
+
+  tags = {
+    Name     = "${var.project_name}-https-listener-rule-${each.value.priority}-${each.value.target_group_suffix}"
+    Priority = each.value.priority
+  }
+}
+
+resource "aws_lb_listener_rule" "http_rules" {
+  for_each = (!var.enable_https_listener || !var.http_redirect_to_https) ? try(nonsensitive(local.listener_rules), local.listener_rules) : {}
 
   listener_arn = aws_lb_listener.http.arn
   priority     = each.value.priority
@@ -151,7 +237,7 @@ resource "aws_lb_listener_rule" "rules" {
   }
 
   tags = {
-    Name     = "${var.project_name}-listener-rule-${each.value.priority}-${each.value.target_group_suffix}"
+    Name     = "${var.project_name}-http-listener-rule-${each.value.priority}-${each.value.target_group_suffix}"
     Priority = each.value.priority
   }
 }

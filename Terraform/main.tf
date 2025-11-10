@@ -23,6 +23,11 @@ module "alb" {
   project_name      = var.project_name
   vpc_id            = module.vpc.vpc_id
   public_subnet_ids = module.vpc.public_subnet_ids
+  enable_https_listener        = var.alb_enable_https_listener
+  https_listener_certificate_arn = var.alb_certificate_arn
+  https_listener_ssl_policy    = var.alb_https_ssl_policy
+  http_redirect_to_https       = var.alb_http_redirect_to_https
+  http_redirect_status_code    = var.alb_http_redirect_status_code
 
   target_groups_definition = [
     {

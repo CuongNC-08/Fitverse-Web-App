@@ -31,6 +31,47 @@ variable "private_subnet_cidr" {
   default     = "10.0.3.0/24"
 }
 
+# ALB / Listener Settings
+variable "alb_enable_https_listener" {
+  description = "Enable the HTTPS listener (port 443) on the ALB."
+  type        = bool
+  default     = false
+}
+
+variable "alb_certificate_arn" {
+  description = "ACM certificate ARN served by the HTTPS listener. Required when alb_enable_https_listener is true."
+  type        = string
+  default     = null
+
+  validation {
+    condition     = var.alb_enable_https_listener ? var.alb_certificate_arn != null && length(trim(var.alb_certificate_arn)) > 0 : true
+    error_message = "alb_certificate_arn must be set when alb_enable_https_listener is true."
+  }
+}
+
+variable "alb_https_ssl_policy" {
+  description = "SSL policy enforced by the HTTPS listener."
+  type        = string
+  default     = "ELBSecurityPolicy-TLS-1-2-2017-01"
+}
+
+variable "alb_http_redirect_to_https" {
+  description = "When true, HTTP requests are redirected to HTTPS once the HTTPS listener is enabled."
+  type        = bool
+  default     = true
+}
+
+variable "alb_http_redirect_status_code" {
+  description = "Status code used by the HTTP->HTTPS redirect."
+  type        = string
+  default     = "HTTP_301"
+
+  validation {
+    condition     = contains(["HTTP_301", "HTTP_302"], var.alb_http_redirect_status_code)
+    error_message = "alb_http_redirect_status_code must be HTTP_301 or HTTP_302."
+  }
+}
+
 # EC2 Variables
 variable "instance_type" {
   description = "EC2 instance type (free tier eligible: t2.micro)"

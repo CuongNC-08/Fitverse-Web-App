@@ -3,6 +3,16 @@ output "alb_dns_name" {
   value       = module.alb.alb_dns_name
 }
 
+output "alb_zone_id" {
+  description = "Hosted zone ID for the ALB (use when creating Route 53 aliases)."
+  value       = module.alb.alb_zone_id
+}
+
+output "alb_https_listener_arn" {
+  description = "ARN of the HTTPS listener (null when disabled)."
+  value       = module.alb.https_listener_arn
+}
+
 
 # VPC Outputs
 output "vpc_id" {
